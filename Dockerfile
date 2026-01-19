@@ -12,8 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 
 
-# 复制应用代码
-COPY app/ ./app/
+
 
 # 复制supervisor配置
 COPY supervisor/ /etc/supervisor/conf.d/
