@@ -10,9 +10,7 @@ RUN apt-get update && apt-get install -y \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制requirements文件并安装Python依赖
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
 
 # 复制应用代码
 COPY app/ ./app/
