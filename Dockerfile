@@ -5,25 +5,24 @@ RUN apt-get update && \
     apt-get install -y \
         xorg \
         libgtk-3-0 \
+        wget \
         curl \
-        unzip \
-        zip \
-        git && \
+        gcc \
+        libz-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# 安装 SDKMAN 和 Java 24
-RUN curl -s "https://get.sdkman.io" | bash && \
-    bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && \
-             sdk install java 24.ea.31-open && \
-             sdk default java 24.ea.31-open"
+# 下载并安装 GraalVM JDK 24
+WORKDIR /opt
+RUN wget https://download.oracle.com/graalvm/24/latest/graalvm-jdk-24_linux-x64_bin.tar.gz && \
+    tar -xzf graalvm-jdk-24_linux-x64_bin.tar.gz && \
+    rm graalvm-jdk-24_linux-x64_bin.tar.gz && \
+    mv graalvm-jdk-24* graalvm
 
-# 设置 Java 环境变量
-ENV JAVA_HOME=/root/.sdkman/candidates/java/current
+ENV JAVA_HOME=/opt/graalvm
 ENV PATH=$JAVA_HOME/bin:$PATH
 
 # 下载 JavaFX 25.0.2
-WORKDIR /opt
 RUN wget https://download2.gluonhq.com/openjfx/25.0.2/openjfx-25.0.2_linux-x64_bin-sdk.zip && \
     unzip openjfx-25.0.2_linux-x64_bin-sdk.zip && \
     rm openjfx-25.0.2_linux-x64_bin-sdk.zip && \
