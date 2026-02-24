@@ -11,24 +11,27 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# 下载 Azul Zulu JDK 24
+# 添加 Liberica JDK 仓库
+RUN wget -q -O - https://download.bell-sw.com/pki/GPG-KEY-bellsoft | apt-key add - && \
+    echo "deb [arch=amd64] https://apt.bell-sw.com/ stable main" > /etc/apt/sources.list.d/bellsoft.list
+
+# 安装 Liberica JDK 24
+RUN apt-get update && \
+    apt-get install -y bellsoft-java24-full && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# 下载 JavaFX 25.0.2（如果需要额外模块）
 WORKDIR /opt
-RUN wget https://cdn.azul.com/zulu/bin/zulu24.30.13-ca-jdk24.0.1-linux_x64.tar.gz && \
-    tar -xzf zulu24.30.13-ca-jdk24.0.1-linux_x64.tar.gz && \
-    rm zulu24.30.13-ca-jdk24.0.1-linux_x64.tar.gz && \
-    mv zulu24.30.13-ca-jdk24.0.1-linux_x64 jdk-24
-
-ENV JAVA_HOME=/opt/jdk-24
-ENV PATH=$JAVA_HOME/bin:$PATH
-
-# 下载 JavaFX 25.0.2
 RUN wget https://download2.gluonhq.com/openjfx/25.0.2/openjfx-25.0.2_linux-x64_bin-sdk.zip && \
     unzip openjfx-25.0.2_linux-x64_bin-sdk.zip && \
     rm openjfx-25.0.2_linux-x64_bin-sdk.zip && \
     mv javafx-sdk-25.0.2 /opt/javafx
 
+# 设置环境变量
+ENV JAVA_HOME=/usr/lib/jvm/bellsoft-java24-full-amd64
+ENV PATH=$JAVA_HOME/bin:$PATH
 ENV JAVAFX_HOME=/opt/javafx/lib
-ENV _JAVA_OPTIONS="--module-path=/opt/javafx/lib --add-modules=ALL-MODULE-PATH"
 
 WORKDIR /jproserver
 CMD ["./bin/restart.sh"]
