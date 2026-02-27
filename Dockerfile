@@ -52,35 +52,31 @@ export JAVAFX_LIB_PATH=$JAVAFX_HOME/lib\n\
 if [ -d "/jproserver" ]; then\n\
     echo "JPro directory found."\n\
     \n\
-    # JPro 可能期望的平台名称是 "linux" 而不是 "linux-x64"\n\
-    # 尝试多种可能的路径\n\
+    # JPro 应用期望的路径是 /jproserver/jfx/linux/\n\
     mkdir -p /jproserver/jfx\n\
     \n\
     if [ ! -d "/jproserver/jfx/linux" ]; then\n\
         echo "Creating JavaFX symlink for JPro application (linux)..."\n\
         ln -sf /opt/javafx/lib /jproserver/jfx/linux\n\
+        echo "Symlink created: /jproserver/jfx/linux -> /opt/javafx/lib"\n\
+    else\n\
+        echo "JavaFX symlink already exists at /jproserver/jfx/linux"\n\
     fi\n\
     \n\
-    if [ ! -d "/jproserver/jfx/linux-x64" ]; then\n\
-        echo "Creating JavaFX symlink for JPro application (linux-x64)..."\n\
-        ln -sf /opt/javafx/lib /jproserver/jfx/linux-x64\n\
-    fi\n\
-    \n\
-    if [ ! -d "/jproserver/jfx/linux-amd64" ]; then\n\
-        echo "Creating JavaFX symlink for JPro application (linux-amd64)..."\n\
-        ln -sf /opt/javafx/lib /jproserver/jfx/linux-amd64\n\
-    fi\n\
+    # 验证符号链接\n\
+    echo "Contents of /jproserver/jfx/linux:"\n\
+    ls -la /jproserver/jfx/linux/ | head -5\n\
     \n\
     # 查找启动脚本\n\
     if [ -f "/jproserver/bin/restart.sh" ]; then\n\
-        echo "Found restart.sh, executing with JavaFX module path..."\n\
+        echo "Found restart.sh, executing..."\n\
         cd /jproserver\n\
         # 在环境中传递 JavaFX 路径\n\
         export JAVA_OPTS="$JAVA_OPTS --module-path=/opt/javafx/lib --add-modules=javafx.controls,javafx.fxml,javafx.web,javafx.media"\n\
         echo "Executing: /jproserver/bin/restart.sh"\n\
         exec /jproserver/bin/restart.sh\n\
     elif [ -f "/jproserver/bin/start.sh" ]; then\n\
-        echo "Found start.sh, executing with JavaFX module path..."\n\
+        echo "Found start.sh, executing..."\n\
         cd /jproserver\n\
         export JAVA_OPTS="$JAVA_OPTS --module-path=/opt/javafx/lib --add-modules=javafx.controls,javafx.fxml,javafx.web,javafx.media"\n\
         echo "Executing: /jproserver/bin/start.sh"\n\
