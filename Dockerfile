@@ -1,28 +1,30 @@
 ##
 ## @file        Dockerfile
-## @brief       Dockerfile for JavaFX with JDK 24 using Azul Zulu FX
+## @brief       Dockerfile for JavaFX with JDK 24
 ## @author      Adapted from Keitetsu's work
 ## @date        2026/02/27
 ##
 
-# 使用正确的 Azul Zulu FX 24 镜像（包含 JavaFX）
-FROM azul/zulu-openjdk:24-fx
+# 使用标准的 Debian 镜像 + 手动安装 JDK 24 和 JavaFX 24
+FROM debian:bookworm-slim
 
 LABEL maintainer="your-email@example.com"
 
 ##
-## 安装系统依赖
+## 安装系统依赖和 JDK 24
 ##
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get upgrade -y -qq && \
     apt-get install -y -qq --no-install-recommends \
+    wget \
+    gnupg \
+    ca-certificates \
     gosu \
     sudo \
     apt-utils \
     locales \
     locales-all \
-    wget \
     gzip \
     tar \
     unzip \
@@ -35,43 +37,65 @@ RUN apt-get update && \
     libfontconfig1 \
     xvfb \
     git \
-    ca-certificates \
     && \
     apt-get clean && \
-    apt-get autoclean && \
-    rm -rf /tmp/* && \
-    rm -rf /var/tmp/* && \
-    rm -rf /var/cache/* && \
     rm -rf /var/lib/apt/lists/*
 
-# 验证 JavaFX 已包含在 JDK 中
-RUN java --list-modules | grep javafx && \
-    echo "✓ JavaFX is included in this JDK" || \
-    (echo "✗ JavaFX not found" && exit 1)
+##
+## 安装 JDK 24 (使用 Eclipse Temurin 构建)
+##
+RUN wget -O /tmp/jdk.tar.gz https://github.com/adoptium/temurin24-binaries/releases/download/jdk-24%2B36/OpenJDK24U-jdk_x64_linux_hotspot_24_36.tar.gz && \
+    tar -xzf /tmp/jdk.tar.gz -C /opt/ && \
+    mv /opt/jdk-24+36 /opt/jdk-24 && \
+    rm /tmp/jdk.tar.gz
+
+ENV JAVA_HOME=/opt/jdk-24
+ENV PATH=$JAVA_HOME/bin:$PATH
 
 ##
-## 创建虚拟显示环境（用于无头服务器）
+## 安装 JavaFX 24
+##
+RUN cd /tmp && \
+    wget https://download2.gluonhq.com/openjfx/24/openjfx-24_linux-x64_bin-sdk.zip && \
+    unzip openjfx-24_linux-x64_bin-sdk.zip && \
+    mv javafx-sdk-24/ /opt/ && \
+    rm -rf /tmp/*
+
+ENV JAVAFX_HOME=/opt/javafx-sdk-24
+ENV JAVA_OPTS="--module-path ${JAVAFX_HOME}/lib --add-modules javafx.controls,javafx.fxml,javafx.web"
+
+##
+## 验证 Java 和 JavaFX 安装
+##
+RUN java -version && \
+    ls -la ${JAVAFX_HOME}/lib && \
+    echo "JavaFX modules:" && \
+    java --module-path ${JAVAFX_HOME}/lib --list-modules | grep javafx
+
+##
+## 创建虚拟显示环境
 ##
 ENV DISPLAY=:99
 
 ##
 ## locale settings
 ##
-RUN locale-gen en_US.UTF-8 && \
-    update-locale
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen && \
+    update-locale LANG=en_US.UTF-8
 ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
 
 ##
 ## ENTRYPOINT settings
 ##
 RUN echo '#!/bin/bash\n\
-# Start Xvfb virtual display if not already running\n\
+# Start Xvfb virtual display\n\
 if [ ! -e /tmp/.X99-lock ]; then\n\
     Xvfb :99 -screen 0 1024x768x24 &\n\
     echo "Started Xvfb on display :99"\n\
 fi\n\
 \n\
-# Execute the command passed to docker\n\
+# Execute command\n\
 exec "$@"' > /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
@@ -79,6 +103,7 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 RUN mkdir -p /data /jproserver
 WORKDIR /jproserver
+
 
 
 CMD ["sh", "-c", "cd /jproserver && ./bin/restart.sh"]
