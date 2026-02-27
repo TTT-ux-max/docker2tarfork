@@ -1,20 +1,24 @@
-# 修正：使用 -full 标签获取包含 JavaFX 的完整版本
-FROM bellsoft/liberica-openjdk-debian:24-full
+FROM amazoncorretto:24
 
-# 安装基础依赖
-RUN apt-get update && apt-get install -y \
-    libpango1.0-0 \
-    libcairo2 \
-    libfreetype6 \
-    libfontconfig1 \
-    xvfb \
-    && rm -rf /var/lib/apt/lists/*
+# 安装 EPEL 仓库和 OpenJFX
+RUN yum update -y && \
+    yum install -y epel-release && \
+    yum install -y openjfx && \
+    yum install -y \
+    pango \
+    cairo \
+    freetype \
+    fontconfig \
+    xorg-x11-server-Xvfb \
+    && yum clean all
 
-# 验证 JavaFX 是否已包含
-RUN java --list-modules | grep javafx && echo "JavaFX modules found successfully"
+# 验证 OpenJFX 安装
+RUN java --module-path /usr/share/java/openjfx/lib --list-modules | grep javafx || echo "OpenJFX installed but modules check failed"
 
 WORKDIR /jproserver
 
+# 设置 JavaFX 模块路径
+ENV JAVA_OPTS="--module-path /usr/share/java/openjfx/lib --add-modules javafx.controls,javafx.fxml"
 ENV DISPLAY=:99
 
-CMD Xvfb :99 -screen 0 1024x768x24 & ./bin/restart.sh
+CMD Xvfb :99 -screen 0 1024x768x24 & cd /jproserver && ./bin/restart.sh
