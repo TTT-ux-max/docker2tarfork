@@ -8,8 +8,8 @@
 ##              This software is released under the MIT License.
 ##
 
-# 使用 JDK 24 作为基础镜像
-FROM openjdk:24-slim-bookworm
+# 使用 JDK 24 EA 版本的 slim 镜像
+FROM openjdk:24-ea-13-jdk-slim-bookworm
 
 LABEL maintainer="your-email@example.com"
 
@@ -50,7 +50,6 @@ RUN apt-get update && \
 ##
 ## 安装 JavaFX 24 (最新稳定版)
 ## https://gluonhq.com/products/javafx/
-## https://openjfx.io/openjfx-docs/#install-javafx
 ##
 RUN cd /tmp && \
     # 下载 JavaFX 24 SDK (Linux x64)
@@ -61,10 +60,10 @@ RUN cd /tmp && \
 
 # 设置 JavaFX 环境变量
 ENV PATH_TO_FX=/usr/local/lib/javafx-sdk-24/lib \
-    LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/javafx-sdk-24/lib
+    LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/javafx-sdk-24/lib \
+    JAVAFX_HOME=/usr/local/lib/javafx-sdk-24
 
-# 为了兼容性，也设置 JAVAFX_HOME
-ENV JAVAFX_HOME=/usr/local/lib/javafx-sdk-24
+# 设置 Java 选项
 ENV JAVA_OPTS="--module-path ${JAVAFX_HOME}/lib --add-modules javafx.controls,javafx.fxml,javafx.web,javafx.swing"
 
 ##
@@ -82,11 +81,11 @@ ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
 ##
 ## ENTRYPOINT settings
 ##
-# 创建 entrypoint 脚本
 RUN echo '#!/bin/bash\n\
-# Start Xvfb virtual display if needed\n\
-if [ ! -z "$DISPLAY" ] && [ ! -f /tmp/.X99-lock ]; then\n\
+# Start Xvfb virtual display if not already running\n\
+if [ ! -e /tmp/.X99-lock ]; then\n\
     Xvfb :99 -screen 0 1024x768x24 &\n\
+    echo "Started Xvfb on display :99"\n\
 fi\n\
 \n\
 # Execute the command passed to docker\n\
@@ -95,7 +94,10 @@ exec "$@"' > /usr/local/bin/entrypoint.sh && \
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
+# 创建必要的目录
 RUN mkdir -p /data /jproserver
+
 WORKDIR /jproserver
+
 
 CMD ["sh", "-c", "cd /jproserver && ./bin/restart.sh"]
