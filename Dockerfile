@@ -18,12 +18,17 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# 创建 BellSoft JDK 符号链接以兼容 JPro 应用
-RUN mkdir -p /usr/lib/jvm/bellsoft-x86_64/bin && \
-    ln -sf /usr/lib/jvm/temurin-24-jdk-amd64/bin/java /usr/lib/jvm/bellsoft-x86_64/bin/java && \
-    ln -sf /usr/lib/jvm/temurin-24-jdk-amd64/bin/javac /usr/lib/jvm/bellsoft-x86_64/bin/javac && \
+# 创建 BellSoft JDK 兼容的目录结构（匹配实际的 BellSoft 路径格式）
+RUN mkdir -p /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin && \
+    ln -sf /usr/lib/jvm/temurin-24-jdk-amd64/bin/java /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin/java && \
+    ln -sf /usr/lib/jvm/temurin-24-jdk-amd64/bin/javac /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin/javac && \
+    ln -sf /usr/lib/jvm/temurin-24-jdk-amd64/bin/jshell /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin/jshell 2>/dev/null || true && \
     # 验证链接创建成功
-    ls -la /usr/lib/jvm/bellsoft-x86_64/bin/
+    echo "BellSoft compatibility links created:" && \
+    ls -la /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin/
+
+# 同时创建通用的 bellsoft-x86_64 链接作为备选
+RUN ln -sf /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64 /usr/lib/jvm/bellsoft-x86_64 2>/dev/null || true
 
 # 下载 JavaFX 25.0.2 AMD64 SDK（使用 GluonHQ 链接）
 RUN wget https://download2.gluonhq.com/openjfx/25.0.2/openjfx-25.0.2_linux-x64_bin-sdk.zip && \
@@ -47,23 +52,39 @@ echo "Java version:"\n\
 java -version\n\
 echo ""\n\
 \n\
-# 查找实际的 Java 路径并确保 BellSoft 符号链接存在\n\
+# 查找实际的 Java 路径\n\
 ACTUAL_JAVA=$(which java)\n\
 echo "Actual Java path: $ACTUAL_JAVA"\n\
 \n\
-# 双重确保 BellSoft 符号链接存在（运行时再次检查）\n\
-if [ ! -f "/usr/lib/jvm/bellsoft-x86_64/bin/java" ]; then\n\
-    echo "Creating BellSoft JDK symlink at runtime..."\n\
-    mkdir -p /usr/lib/jvm/bellsoft-x86_64/bin\n\
-    ln -sf $ACTUAL_JAVA /usr/lib/jvm/bellsoft-x86_64/bin/java\n\
-    # 同时创建 javac 等其他工具的链接\n\
-    JAVAC_PATH=$(which javac 2>/dev/null || echo "")\n\
-    if [ -n "$JAVAC_PATH" ]; then\n\
-        ln -sf $JAVAC_PATH /usr/lib/jvm/bellsoft-x86_64/bin/javac\n\
-    fi\n\
-    echo "BellSoft symlink created successfully"\n\
+# 创建 BellSoft JDK 兼容路径（使用正确的路径格式）\n\
+BELLSOFT_PATH="/usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64"\n\
+\n\
+if [ ! -f "$BELLSOFT_PATH/bin/java" ]; then\n\
+    echo "Creating BellSoft JDK compatibility links at $BELLSOFT_PATH..."\n\
+    mkdir -p $BELLSOFT_PATH/bin\n\
+    ln -sf $ACTUAL_JAVA $BELLSOFT_PATH/bin/java\n\
+    \n\
+    # 同时创建其他常用工具的链接\n\
+    for tool in javac jshell keytool jar; do\n\
+        TOOL_PATH=$(which $tool 2>/dev/null || echo "")\n\
+        if [ -n "$TOOL_PATH" ]; then\n\
+            ln -sf $TOOL_PATH $BELLSOFT_PATH/bin/$tool\n\
+        fi\n\
+    done\n\
+    \n\
+    echo "BellSoft compatibility links created successfully"\n\
 else\n\
-    echo "BellSoft JDK symlink already exists"\n\
+    echo "BellSoft JDK compatibility links already exist"\n\
+fi\n\
+\n\
+# 同时创建简化的 bellsoft-x86_64 链接\n\
+if [ ! -L "/usr/lib/jvm/bellsoft-x86_64" ]; then\n\
+    ln -sf $BELLSOFT_PATH /usr/lib/jvm/bellsoft-x86_64 2>/dev/null || true\n\
+fi\n\
+\n\
+# 验证 Java 命令在 BellSoft 路径下可用\n\
+if [ -f "$BELLSOFT_PATH/bin/java" ]; then\n\
+    echo "BellSoft Java verification: $($BELLSOFT_PATH/bin/java -version 2>&1 | head -1)"\n\
 fi\n\
 \n\
 echo "JavaFX AMD64 libraries available at: /opt/javafx/lib"\n\
