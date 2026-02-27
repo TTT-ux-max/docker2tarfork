@@ -1,109 +1,89 @@
-##
-## @file        Dockerfile
-## @brief       Dockerfile for JavaFX with JDK 24
-## @author      Adapted from Keitetsu's work
-## @date        2026/02/27
-##
+FROM ubuntu:24.04
 
-# 使用标准的 Debian 镜像 + 手动安装 JDK 24 和 JavaFX 24
-FROM debian:bookworm-slim
+RUN apt-get update
 
-LABEL maintainer="your-email@example.com"
+# Install xorg and libgtk-3-0 needed to run JPro applications
+RUN apt-get install -y xorg libgtk-3-0
 
-##
-## 安装系统依赖和 JDK 24
-##
-ENV DEBIAN_FRONTEND=noninteractive
+# Install wget and software-properties-common need to add Adoptium APT repository
+RUN apt-get install -y wget software-properties-common unzip
+
+# Add the Adoptium (Eclipse Temurin) APT repository and import the GPG key
+RUN wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add - && \
+    add-apt-repository --yes https://packages.adoptium.net/artifactory/deb/
+
+# Install Temurin 24 JDK
 RUN apt-get update && \
-    apt-get upgrade -y -qq && \
-    apt-get install -y -qq --no-install-recommends \
-    wget \
-    gnupg \
-    ca-certificates \
-    gosu \
-    sudo \
-    apt-utils \
-    locales \
-    locales-all \
-    gzip \
-    tar \
-    unzip \
-    x11-utils \
-    libgtk-3-0 \
-    libcanberra-gtk3-module \
-    libpango-1.0-0 \
-    libcairo2 \
-    libfreetype6 \
-    libfontconfig1 \
-    xvfb \
-    git \
-    && \
+    apt-get install -y temurin-24-jdk && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-##
-## 安装 JDK 24 (使用 Eclipse Temurin 构建)
-##
-RUN wget -O /tmp/jdk.tar.gz https://github.com/adoptium/temurin24-binaries/releases/download/jdk-24%2B36/OpenJDK24U-jdk_x64_linux_hotspot_24_36.tar.gz && \
-    tar -xzf /tmp/jdk.tar.gz -C /opt/ && \
-    mv /opt/jdk-24+36 /opt/jdk-24 && \
-    rm /tmp/jdk.tar.gz
+# 下载 JavaFX 25.0.2 AMD64 SDK 到镜像中
+RUN wget https://download2.gluonhq.com/openjfx/25.0.2/openjfx-25.0.2_linux-x64_bin-sdk.zip && \
+    unzip openjfx-25.0.2_linux-x64_bin-sdk.zip -d /opt/ && \
+    rm openjfx-25.0.2_linux-x64_bin-sdk.zip
 
-ENV JAVA_HOME=/opt/jdk-24
-ENV PATH=$JAVA_HOME/bin:$PATH
+# 创建 JavaFX 符号链接，方便引用
+RUN ln -s /opt/javafx-sdk-25.0.2 /opt/javafx
 
-##
-## 安装 JavaFX 24
-##
-RUN cd /tmp && \
-    wget https://download2.gluonhq.com/openjfx/24/openjfx-24_linux-x64_bin-sdk.zip && \
-    unzip openjfx-24_linux-x64_bin-sdk.zip && \
-    mv javafx-sdk-24/ /opt/ && \
-    rm -rf /tmp/*
+# 设置 JavaFX 环境变量
+ENV JAVAFX_HOME=/opt/javafx
+ENV JAVAFX_MODULES="--module-path=$JAVAFX_HOME/lib --add-modules=javafx.controls,javafx.fxml,javafx.web,javafx.media"
 
-ENV JAVAFX_HOME=/opt/javafx-sdk-24
-ENV JAVA_OPTS="--module-path ${JAVAFX_HOME}/lib --add-modules javafx.controls,javafx.fxml,javafx.web"
-
-##
-## 验证 Java 和 JavaFX 安装
-##
-RUN java -version && \
-    ls -la ${JAVAFX_HOME}/lib && \
-    echo "JavaFX modules:" && \
-    java --module-path ${JAVAFX_HOME}/lib --list-modules | grep javafx
-
-##
-## 创建虚拟显示环境
-##
-ENV DISPLAY=:99
-
-##
-## locale settings
-##
-RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
-    locale-gen && \
-    update-locale LANG=en_US.UTF-8
-ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
-
-##
-## ENTRYPOINT settings
-##
+# 创建一个包装脚本，它会在容器启动时运行
 RUN echo '#!/bin/bash\n\
-# Start Xvfb virtual display\n\
-if [ ! -e /tmp/.X99-lock ]; then\n\
-    Xvfb :99 -screen 0 1024x768x24 &\n\
-    echo "Started Xvfb on display :99"\n\
+echo "=========================================="\n\
+echo "JPro AMD64 Docker Container Started (JDK 24)"\n\
+echo "=========================================="\n\
+echo "Java version:"\n\
+java -version\n\
+echo ""\n\
+echo "JavaFX AMD64 libraries available at: /opt/javafx/lib"\n\
+ls -la /opt/javafx/lib/ | head -10\n\
+echo ""\n\
+echo "Looking for JPro application at /jproserver..."\n\
+\n\
+# 检查 JPro 应用是否已挂载\n\
+if [ -d "/jproserver" ]; then\n\
+    echo "JPro directory found."\n\
+    \n\
+    # 检查是否有 jfx 目录，如果没有则创建符号链接\n\
+    if [ ! -d "/jproserver/jfx/linux-x64" ]; then\n\
+        echo "Creating JavaFX symlink for JPro application..."\n\
+        mkdir -p /jproserver/jfx\n\
+        ln -sf /opt/javafx/lib /jproserver/jfx/linux-x64\n\
+    fi\n\
+    \n\
+    # 查找启动脚本\n\
+    if [ -f "/jproserver/bin/restart.sh" ]; then\n\
+        echo "Found restart.sh, executing..."\n\
+        cd /jproserver\n\
+        exec /jproserver/bin/restart.sh\n\
+    elif [ -f "/jproserver/bin/start.sh" ]; then\n\
+        echo "Found start.sh, executing..."\n\
+        cd /jproserver\n\
+        exec /jproserver/bin/start.sh\n\
+    else\n\
+        echo "No startup script found in /jproserver/bin/"\n\
+        echo "Contents of /jproserver:"\n\
+        ls -la /jproserver\n\
+        echo "Contents of /jproserver/bin (if exists):"\n\
+        ls -la /jproserver/bin 2>/dev/null || echo "bin directory not found"\n\
+    fi\n\
+else\n\
+    echo "JPro directory /jproserver not found!"\n\
+    echo "Please mount your JPro application to /jproserver"\n\
+    echo "Example: docker run -v /path/to/your/jproserver:/jproserver ..."\n\
 fi\n\
 \n\
-# Execute command\n\
-exec "$@"' > /usr/local/bin/entrypoint.sh && \
-    chmod +x /usr/local/bin/entrypoint.sh
+# 保持容器运行（便于调试）\n\
+echo ""\n\
+echo "Container will stay alive for debugging. Press Ctrl+C to exit."\n\
+tail -f /dev/null\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# 设置工作目录
+WORKDIR /
 
-RUN mkdir -p /data /jproserver
-WORKDIR /jproserver
-
-
-
-CMD ["sh", "-c", "cd /jproserver && ./bin/restart.sh"]
+# 使用 entrypoint 脚本
+ENTRYPOINT ["/entrypoint.sh"]
