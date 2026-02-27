@@ -18,10 +18,10 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# 下载 JavaFX 25.0.2 AMD64 SDK 到镜像中
-RUN wget https://download2.gluonhq.com/openjfx/25.0.2/openjfx-25.0.2_linux-x64_bin-sdk.zip && \
-    unzip openjfx-25.0.2_linux-x64_bin-sdk.zip -d /opt/ && \
-    rm openjfx-25.0.2_linux-x64_bin-sdk.zip
+# 从 OpenJDK 官方下载 JavaFX 25.0.2 AMD64 SDK
+RUN wget https://download.java.net/java/early_access/javafx25/25.0.2/openjfx-25.0.2_linux-x64_bin-sdk.tar.gz && \
+    tar -xzf openjfx-25.0.2_linux-x64_bin-sdk.tar.gz -C /opt/ && \
+    rm openjfx-25.0.2_linux-x64_bin-sdk.tar.gz
 
 # 创建 JavaFX 符号链接，方便引用
 RUN ln -s /opt/javafx-sdk-25.0.2 /opt/javafx
