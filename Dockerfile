@@ -1,12 +1,24 @@
-FROM amazoncorretto:24
+# 使用 Liberica JDK（包含 JavaFX）
+FROM bellsoft/liberica-openjdk-debian:24
 
-RUN yum update -y && \
-    yum install -y openjfx && \
-    yum clean all
+# 安装依赖（注意：这是基于 Debian 的）
+RUN apt-get update && apt-get install -y \
+    libpango1.0-0 \
+    libcairo2 \
+    libfreetype6 \
+    libfontconfig1 \
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libxtst6 \
+    libxi6 \
+    xvfb \
+    && rm -rf /var/lib/apt/lists/*
 
+# 设置工作目录
 WORKDIR /jproserver
 
-# 使用无头模式
-ENV _JAVA_OPTIONS="-Djavafx.platform=Headless -Djava.awt.headless=true"
+# Liberica JDK 已经包含了 JavaFX，无需额外配置
+ENV JAVA_OPTS=""
 
 CMD ["sh", "-c", "cd /jproserver && ./bin/restart.sh"]
