@@ -30,10 +30,10 @@ RUN mkdir -p /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin && \
 # 同时创建通用的 bellsoft-x86_64 链接作为备选
 RUN ln -sf /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64 /usr/lib/jvm/bellsoft-x86_64 2>/dev/null || true
 
-# 下载 JavaFX 25.0.2 AMD64 SDK（使用 GluonHQ 链接）
-RUN wget https://download2.gluonhq.com/openjfx/25.0.2/openjfx-25.0.2_linux-x64_bin-sdk.zip && \
-    unzip openjfx-25.0.2_linux-x64_bin-sdk.zip -d /opt/ && \
-    rm openjfx-25.0.2_linux-x64_bin-sdk.zip
+# 下载 JavaFX 24.0.2 AMD64 SDK（使用 GluonHQ 链接）
+RUN wget https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_linux-x64_bin-sdk.zip && \
+    unzip openjfx-24.0.2_linux-x64_bin-sdk.zip -d /opt/ && \
+    rm openjfx-24.0.2_linux-x64_bin-sdk.zip
 
 # 创建 JavaFX 符号链接，方便引用
 RUN ln -s /opt/javafx-sdk-25.0.2 /opt/javafx
