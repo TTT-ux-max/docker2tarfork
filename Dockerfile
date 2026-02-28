@@ -12,31 +12,31 @@ RUN apt-get install -y wget software-properties-common unzip
 RUN wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add - && \
     add-apt-repository --yes https://packages.adoptium.net/artifactory/deb/
 
-# Install Temurin 24 JDK (ARM64 version)
+# Install Temurin 24 JDK
 RUN apt-get update && \
     apt-get install -y temurin-24-jdk && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# 创建 BellSoft JDK 兼容的目录结构（ARM64 版本）
-RUN mkdir -p /usr/lib/jvm/jdk-24.0.2-bellsoft-aarch64/bin && \
-    ln -sf /usr/lib/jvm/temurin-24-jdk-arm64/bin/java /usr/lib/jvm/jdk-24.0.2-bellsoft-aarch64/bin/java && \
-    ln -sf /usr/lib/jvm/temurin-24-jdk-arm64/bin/javac /usr/lib/jvm/jdk-24.0.2-bellsoft-aarch64/bin/javac && \
-    ln -sf /usr/lib/jvm/temurin-24-jdk-arm64/bin/jshell /usr/lib/jvm/jdk-24.0.2-bellsoft-aarch64/bin/jshell 2>/dev/null || true && \
+# 创建 BellSoft JDK 兼容的目录结构（匹配实际的 BellSoft 路径格式）
+RUN mkdir -p /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin && \
+    ln -sf /usr/lib/jvm/temurin-24-jdk-amd64/bin/java /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin/java && \
+    ln -sf /usr/lib/jvm/temurin-24-jdk-amd64/bin/javac /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin/javac && \
+    ln -sf /usr/lib/jvm/temurin-24-jdk-amd64/bin/jshell /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin/jshell 2>/dev/null || true && \
     # 验证链接创建成功
     echo "BellSoft compatibility links created:" && \
-    ls -la /usr/lib/jvm/jdk-24.0.2-bellsoft-aarch64/bin/
+    ls -la /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64/bin/
 
-# 同时创建通用的 bellsoft-aarch64 链接作为备选
-RUN ln -sf /usr/lib/jvm/jdk-24.0.2-bellsoft-aarch64 /usr/lib/jvm/bellsoft-aarch64 2>/dev/null || true
+# 同时创建通用的 bellsoft-x86_64 链接作为备选
+RUN ln -sf /usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64 /usr/lib/jvm/bellsoft-x86_64 2>/dev/null || true
 
-# 下载 JavaFX 24.0.2 ARM64 SDK（使用 GluonHQ 链接）- ARM64版本
-RUN wget https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_linux-aarch64_bin-sdk.zip && \
-    unzip openjfx-24.0.2_linux-aarch64_bin-sdk.zip -d /opt/ && \
-    rm openjfx-24.0.2_linux-aarch64_bin-sdk.zip
+# 下载 JavaFX 24.0.2 AMD64 SDK（使用 GluonHQ 链接）
+RUN wget https://download2.gluonhq.com/openjfx/24.0.2/openjfx-24.0.2_linux-x64_bin-sdk.zip && \
+    unzip openjfx-24.0.2_linux-x64_bin-sdk.zip -d /opt/ && \
+    rm openjfx-24.0.2_linux-x64_bin-sdk.zip
 
 # 创建 JavaFX 符号链接，方便引用
-RUN ln -s /opt/javafx-sdk-24.0.2 /opt/javafx
+RUN ln -s /opt/javafx-sdk-25.0.2 /opt/javafx
 
 # 设置 JavaFX 环境变量
 ENV JAVAFX_HOME=/opt/javafx
@@ -46,7 +46,7 @@ ENV JAVAFX_MODULES="--module-path=$JAVAFX_HOME/lib --add-modules=javafx.controls
 # 创建一个包装脚本，它会在容器启动时运行
 RUN echo '#!/bin/bash\n\
 echo "=========================================="\n\
-echo "JPro ARM64 Docker Container Started (JDK 24)"\n\
+echo "JPro AMD64 Docker Container Started (JDK 24)"\n\
 echo "=========================================="\n\
 echo "Java version:"\n\
 java -version\n\
@@ -56,8 +56,8 @@ echo ""\n\
 ACTUAL_JAVA=$(which java)\n\
 echo "Actual Java path: $ACTUAL_JAVA"\n\
 \n\
-# 创建 BellSoft JDK 兼容路径（使用正确的 ARM64 路径格式）\n\
-BELLSOFT_PATH="/usr/lib/jvm/jdk-24.0.2-bellsoft-aarch64"\n\
+# 创建 BellSoft JDK 兼容路径（使用正确的路径格式）\n\
+BELLSOFT_PATH="/usr/lib/jvm/jdk-24.0.2-bellsoft-x86_64"\n\
 \n\
 if [ ! -f "$BELLSOFT_PATH/bin/java" ]; then\n\
     echo "Creating BellSoft JDK compatibility links at $BELLSOFT_PATH..."\n\
@@ -77,9 +77,9 @@ else\n\
     echo "BellSoft JDK compatibility links already exist"\n\
 fi\n\
 \n\
-# 同时创建简化的 bellsoft-aarch64 链接\n\
-if [ ! -L "/usr/lib/jvm/bellsoft-aarch64" ]; then\n\
-    ln -sf $BELLSOFT_PATH /usr/lib/jvm/bellsoft-aarch64 2>/dev/null || true\n\
+# 同时创建简化的 bellsoft-x86_64 链接\n\
+if [ ! -L "/usr/lib/jvm/bellsoft-x86_64" ]; then\n\
+    ln -sf $BELLSOFT_PATH /usr/lib/jvm/bellsoft-x86_64 2>/dev/null || true\n\
 fi\n\
 \n\
 # 验证 Java 命令在 BellSoft 路径下可用\n\
@@ -87,7 +87,7 @@ if [ -f "$BELLSOFT_PATH/bin/java" ]; then\n\
     echo "BellSoft Java verification: $($BELLSOFT_PATH/bin/java -version 2>&1 | head -1)"\n\
 fi\n\
 \n\
-echo "JavaFX ARM64 libraries available at: /opt/javafx/lib"\n\
+echo "JavaFX AMD64 libraries available at: /opt/javafx/lib"\n\
 ls -la /opt/javafx/lib/ | head -10\n\
 echo ""\n\
 echo "Looking for JPro application at /jproserver..."\n\
@@ -100,28 +100,20 @@ export JAVAFX_LIB_PATH=$JAVAFX_HOME/lib\n\
 if [ -d "/jproserver" ]; then\n\
     echo "JPro directory found."\n\
     \n\
-    # JPro 应用期望的路径是 /jproserver/jfx/linux/ 或 /jproserver/jfx/linux-arm/\n\
+    # JPro 应用期望的路径是 /jproserver/jfx/linux/\n\
     mkdir -p /jproserver/jfx\n\
     \n\
-    # JPro 可能同时支持 linux (x86_64) 和 linux-arm 目录\n\
-    if [ ! -d "/jproserver/jfx/linux-arm" ]; then\n\
-        echo "Creating JavaFX symlink for JPro application (linux-arm)..."\n\
-        ln -sf /opt/javafx/lib /jproserver/jfx/linux-arm\n\
-        echo "Symlink created: /jproserver/jfx/linux-arm -> /opt/javafx/lib"\n\
-    else\n\
-        echo "JavaFX symlink already exists at /jproserver/jfx/linux-arm"\n\
-    fi\n\
-    \n\
-    # 同时创建 linux 目录的链接作为备选（有些JPro版本可能期望这个路径）\n\
     if [ ! -d "/jproserver/jfx/linux" ]; then\n\
         echo "Creating JavaFX symlink for JPro application (linux)..."\n\
         ln -sf /opt/javafx/lib /jproserver/jfx/linux\n\
         echo "Symlink created: /jproserver/jfx/linux -> /opt/javafx/lib"\n\
+    else\n\
+        echo "JavaFX symlink already exists at /jproserver/jfx/linux"\n\
     fi\n\
     \n\
     # 验证符号链接\n\
-    echo "Contents of /jproserver/jfx/linux-arm:"\n\
-    ls -la /jproserver/jfx/linux-arm/ | head -5\n\
+    echo "Contents of /jproserver/jfx/linux:"\n\
+    ls -la /jproserver/jfx/linux/ | head -5\n\
     \n\
     # 查找启动脚本\n\
     if [ -f "/jproserver/bin/restart.sh" ]; then\n\
