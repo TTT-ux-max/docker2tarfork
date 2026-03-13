@@ -35,34 +35,34 @@ RUN python --version && pip --version
 # 复制 requirements 文件
 COPY requirements.txt .
 
-# 创建修复后的 requirements 文件
+# 创建修复后的 requirements 文件（单独的 RUN 指令）
 RUN grep -v "pywin32\|pypiwin32\|comtypes\|pywinauto\|win32-setctime" requirements.txt > requirements-linux.txt && \
-    # 更新 typing_extensions
     sed -i '/typing_extensions/d' requirements-linux.txt && \
-    # 更新 urllib3
     sed -i 's/urllib3==1.25.11/urllib3==2.0.7/g' requirements-linux.txt && \
-    # 更新 requests
     sed -i 's/requests==2.24.0/requests==2.31.0/g' requirements-linux.txt && \
-    # 保持 PyYAML 5.3.1 以兼容 unittestreport
-    # sed -i 's/PyYAML==5.3.1/PyYAML==6.0.1/g' requirements-linux.txt && \
-    # 保持 Jinja2 3.0.3 以兼容 unittestreport
-    # sed -i 's/Jinja2==3.0.3/Jinja2==3.1.3/g' requirements-linux.txt
+    echo "typing-extensions==4.13.2" >> requirements-linux.txt
+
+# 显示最终要安装的包（可选，用于调试）
+RUN echo "=== Final requirements ===" && cat requirements-linux.txt
+
+# 先升级 pip
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # 先安装基础包
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir typing-extensions==4.13.2 && \
-    pip install --no-cache-dir numpy==1.24.4 pandas==1.5.3
+RUN pip install --no-cache-dir typing-extensions==4.13.2
+RUN pip install --no-cache-dir numpy==1.24.4 pandas==1.5.3
 
-# 安装依赖，使用旧版解析器
+# 安装其他依赖，使用旧版解析器解决冲突
 RUN pip install --no-cache-dir --use-deprecated=legacy-resolver -r requirements-linux.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 验证关键包安装
 RUN python -c "import sys; print(f'Python version: {sys.version}')" && \
-    python -c "import black; print(f'Black version: {black.__version__}')" && \
-    python -c "import openai; print(f'OpenAI version: {openai.__version__}')" && \
-    python -c "import cv2; print(f'OpenCV version: {cv2.__version__}')" && \
-    python -c "import Jinja2; print(f'Jinja2 version: {Jinja2.__version__}')" && \
-    python -c "import yaml; print(f'PyYAML version: {yaml.__version__}')" || true
+    python -c "import black; print(f'Black version: {black.__version__}')" 2>/dev/null || echo "Black not available" && \
+    python -c "import openai; print(f'OpenAI version: {openai.__version__}')" 2>/dev/null || echo "OpenAI not available" && \
+    python -c "import cv2; print(f'OpenCV version: {cv2.__version__}')" 2>/dev/null || echo "OpenCV not available" && \
+    python -c "import jinja2; print(f'Jinja2 version: {jinja2.__version__}')" && \
+    python -c "import yaml; print(f'PyYAML version: {yaml.__version__}')" && \
+    python -c "import typing_extensions; print(f'Typing Extensions version: {typing_extensions.__version__}')"
 
 # 复制应用代码
 COPY . .
@@ -73,5 +73,9 @@ RUN mkdir -p data config yaml logs reports screenshots temp
 # 创建非 root 用户
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import sys; sys.exit(0)" || exit 1
 
 CMD ["python", "run.py"]
