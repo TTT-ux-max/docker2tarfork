@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python --version && pip --version
 
 # 复制 Linux 版本的 requirements 文件
-COPY requirements-linux.txt ./requirements.txt
+COPY requirements.txt ./requirements.txt
 
 # 使用兼容性解析器安装依赖
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
