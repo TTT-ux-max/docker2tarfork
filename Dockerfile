@@ -1,16 +1,14 @@
-# 使用 Python 3.9 或更高版本
-FROM python:3.9-slim
-# 或者使用 Python 3.10
-# FROM python:3.10-slim
-# 或者使用 Python 3.11  
-# FROM python:3.11-slim
+# 使用基于 Debian bullseye 或 bookworm 的 Python 镜像
+FROM python:3.9-slim-bullseye
+# 或者使用
+# FROM python:3.9-slim-bookworm
 
 WORKDIR /app
 
-# 安装系统依赖
+# 安装系统依赖（修改后的包名）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
@@ -18,15 +16,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制 requirements 文件
+# 显示 Python 版本
+RUN python --version && pip --version
+
 COPY requirements.txt .
 
-# 升级 pip 并安装依赖
+# 安装 Python 依赖
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-# 验证 black 安装
-RUN python -c "import black; print(f'Black version: {black.__version__}')"
 
 COPY . .
 RUN mkdir -p data config yaml
