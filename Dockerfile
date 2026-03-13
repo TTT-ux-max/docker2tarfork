@@ -3,8 +3,8 @@ FROM python:3.8-slim
 
 WORKDIR /app
 
-COPY requirements.txt
+COPY requirements.txt .
 RUN pip install --nocache-dir -r requirements.txt
-COPY ..
+COPY . .
 RUN mkdir -p data  config yaml
 CMD ["python","run.py"]
