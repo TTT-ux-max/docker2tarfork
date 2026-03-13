@@ -67,7 +67,6 @@ pytest-cov==6.0.0
 python-dateutil==2.9.0.post0
 python-jenkins==1.8.2
 pytz==2024.1
-pywin32==306
 pywinauto==0.6.3
 PyYAML==5.3.1
 RequestClient==0.5.0
